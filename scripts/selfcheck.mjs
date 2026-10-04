@@ -72,7 +72,7 @@ assert.equal(parseClarifyQuestions("Q: a\nQ: b\nQ: c\nQ: d\nQ: e\nQ: f\nQ: g\nQ:
 const sysForWire = buildSystemPrompt("id", "saas");
 assert.ok(sysForWire.includes("wireframe"));
 assert.ok(sysForWire.includes("```wireframe"));
-assert.ok(sysForWire.includes("never \\"html\\""));
+assert.ok(sysForWire.includes('never "html"'));
 const refineMsg = buildRefineUserMessage("# Lama", "tambah fitur X");
 assert.ok(refineMsg.includes("<current_prd>") && refineMsg.includes("<instruction>"));
 
