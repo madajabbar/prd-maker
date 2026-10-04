@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PRD Maker
 
-## Getting Started
+Ubah ide produk dalam bahasa natural menjadi PRD (Product Requirements Document) markdown 16 bab lengkap — siap dipakai AI coding agent. Publik, tanpa akun, BYOK (bawa API key sendiri).
 
-First, run the development server:
+## Fitur
+
+- **Generate streaming**: ide → PRD 16 bab (ringkasan eksekutif s.d. glossary) via Vercel AI SDK.
+- **Refine**: revisi dokumen penuh dengan instruksi bebas.
+- **Edit mode**: sunting markdown langsung.
+- **Export**: download `.md` / copy.
+- **Share**: publish ke Postgres (Neon) → link publik `/p/[id]`.
+- **BYOK**: key disimpan hanya di localStorage, dikirim per-request via body POST (tidak pernah di-log server).
+- Provider: OpenRouter (default, ada model gratis), OpenAI, Anthropic, Google, Groq.
+
+## Setup
 
 ```bash
+npm install
+cp .env.example .env.local   # isi POSTGRES_URL dari Neon
+psql $POSTGRES_URL -f sql/0001_init.sql   # atau jalankan SQL lewat editor Neon
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Struktur kunci
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `src/lib/prompts.ts` — inti produk: outline 16 bab, 7 preset template, system prompt builder (output ID/EN).
+- `src/lib/providers.ts` — registry provider BYOK + factory model per-request.
+- `src/lib/store.ts` — localStorage (keys, model, riwayat LRU cap 25).
+- `src/app/api/generate` — streamText mode `create`/`refine`.
+- `src/app/api/verify` — tes key murah.
+- `src/app/api/documents` — publish + GET dokumen share.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deploy (Vercel)
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Import repo ke Vercel.
+2. Set env var `POSTGRES_URL` (connection string Neon/Vercel Postgres).
+3. Jalankan `sql/0001_init.sql` di database.
