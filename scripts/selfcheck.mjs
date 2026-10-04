@@ -68,8 +68,11 @@ assert.deepEqual(parseClarifyQuestions("Q: Siapa target?\nQ: Budget?\nprose lain
 assert.deepEqual(parseClarifyQuestions("no questions here"), []);
 assert.equal(parseClarifyQuestions("Q: a\nQ: b\nQ: c\nQ: d\nQ: e\nQ: f\nQ: g\nQ: h\nQ: i").length, 8);
 
-// System prompt menyuruh wireframe HTML self-contained
-assert.ok(buildSystemPrompt("id", "saas").includes("wireframe"));
+// System prompt menyuruh wireframe HTML self-contained + contoh fence eksplisit
+const sysForWire = buildSystemPrompt("id", "saas");
+assert.ok(sysForWire.includes("wireframe"));
+assert.ok(sysForWire.includes("```wireframe"));
+assert.ok(sysForWire.includes("never \\"html\\""));
 const refineMsg = buildRefineUserMessage("# Lama", "tambah fitur X");
 assert.ok(refineMsg.includes("<current_prd>") && refineMsg.includes("<instruction>"));
 

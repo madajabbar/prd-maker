@@ -173,7 +173,24 @@ export function buildSystemPrompt(
 - Output ONLY the Markdown document. No conversational intro/outro, no wrapping code fence.
 - Start with "# <Product Name>" plus a one-line tagline, then the 16 numbered "## N. ..." sections in the exact order below. Never skip or reorder sections.
 - Use Markdown tables for metrics, competitors, requirements, endpoints, data model, and risks.
-- WIREFRAME RULES: a wireframe mockup is a fenced code block whose info string is exactly "wireframe" and whose content is a single self-contained HTML snippet representing ONE screen: plain HTML elements with INLINE STYLES only (grayscale boxes, borders, padding, flex/grid via style attribute), realistic labels and placeholder text, roughly 600-900 chars. NO <script>, NO external assets, NO Tailwind classes, NO <html>/<head>/<body> wrapper — just the fragment (e.g. a single <div style="...">). Include 2-4 such wireframe blocks for the most important screens inside section 11, each preceded by the screen name in bold.
+- WIREFRAME RULES: include 2-4 visual mockups for the most important screens inside section 11, each preceded by the screen name in bold. Format EVERY mockup EXACTLY like this example — a fenced code block with info string "wireframe" (never "html", never "markdown"), containing a single self-contained HTML fragment with INLINE STYLES only:
+
+**Dashboard — Home**
+\`\`\`wireframe
+<div style="display:flex;min-height:540px;font-family:system-ui,sans-serif;color:#111">
+  <aside style="width:210px;background:#e5e7eb;padding:16px">Sidebar<br><br>• Dashboard<br>• Pipeline<br>• Laporan<br>• Pengaturan</aside>
+  <main style="flex:1;padding:16px">
+    <h1 style="font-size:18px;margin:0 0 12px">Dashboard Sales</h1>
+    <div style="display:flex;gap:12px;margin-bottom:16px">
+      <div style="flex:1;border:1px solid #d1d5db;border-radius:8px;padding:12px">Deal aktif<b style="display:block;font-size:20px">48</b></div>
+      <div style="flex:1;border:1px solid #d1d5db;border-radius:8px;padding:12px">Win rate<b style="display:block;font-size:20px">32%</b></div>
+    </div>
+    <div style="border:1px solid #d1d5db;border-radius:8px;padding:12px">Tabel pipeline: kolom Nama · Nilai · Stage · Owner</div>
+  </main>
+</div>
+\`\`\`
+
+Requirements for every wireframe: plain HTML elements with inline styles (grayscale backgrounds #f3f4f6/#e5e7eb, 1px #d1d5db borders, 8px radius, 12-16px padding, flex/grid via style attribute), realistic labels and real numbers, 500-900 chars, min-height on the root so the layout is visible. NO <script>, NO external assets, NO Tailwind classes, NO <html>/<head>/<body> wrapper.
 - Be specific and concrete: real numbers, named examples, testable acceptance criteria. When the idea lacks detail, invent reasonable decisions instead of leaving placeholders.`,
     SECTIONS,
     `PRODUCT TYPE: ${template.label}. ${template.emphasis}`,
