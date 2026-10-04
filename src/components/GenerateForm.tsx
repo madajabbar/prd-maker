@@ -22,6 +22,11 @@ interface Props {
   busy: boolean;
   onGenerate: () => void;
   onStop: () => void;
+  questions: string[];
+  answers: string[];
+  clarifying: boolean;
+  onClarify: () => void;
+  onAnswerChange: (index: number, value: string) => void;
 }
 
 export default function GenerateForm({
@@ -38,6 +43,11 @@ export default function GenerateForm({
   busy,
   onGenerate,
   onStop,
+  questions,
+  answers,
+  clarifying,
+  onClarify,
+  onAnswerChange,
 }: Props) {
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -58,6 +68,29 @@ export default function GenerateForm({
       <div className="mt-1 text-right text-xs text-zinc-400">
         {idea.length}/{MAX_IDEA_LENGTH}
       </div>
+
+      {questions.length > 0 && (
+        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/40">
+          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+            Pertanyaan klarifikasi dari AI (opsional)
+          </p>
+          <div className="mt-3 space-y-3">
+            {questions.map((question, index) => (
+              <div key={index}>
+                <label className="mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                  {question}
+                </label>
+                <input
+                  value={answers[index] ?? ""}
+                  onChange={(e) => onAnswerChange(index, e.target.value)}
+                  placeholder="Jawaban (boleh dikosongkan)"
+                  className="w-full rounded-xl border border-zinc-300 bg-white p-2.5 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-4">
         <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
@@ -100,6 +133,15 @@ export default function GenerateForm({
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={onClarify}
+            disabled={busy || clarifying || idea.trim().length < MIN_IDEA_LENGTH}
+            className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-500 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300"
+            title="AI menanyakan 3-5 pertanyaan untuk mempertajam PRD"
+          >
+            {clarifying ? "Menyusun pertanyaan…" : "Tanya AI dulu"}
+          </button>
           <button
             type="button"
             onClick={onOpenSettings}

@@ -58,6 +58,9 @@ export default function Studio() {
   const [idea, setIdea] = useState("");
   const [templateId, setTemplateId] = useState(DEFAULT_TEMPLATE_ID);
   const [lang, setLang] = useState<PrdLanguage>("id");
+  const [questions, setQuestions] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<string[]>([]);
+  const [clarifying, setClarifying] = useState(false);
 
   const [prd, setPrd] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -80,6 +83,62 @@ export default function Studio() {
     setModel(m.model);
     setHistory(loadHistory());
   }, []);
+
+  const clarify = async () => {
+    if (idea.trim().length < MIN_IDEA_LENGTH) {
+      setError(`Tulis idemu dulu (minimal ${MIN_IDEA_LENGTH} karakter).`);
+      return;
+    }
+    const apiKey = keys[provider]?.trim() ?? "";
+    const baseUrl = (baseUrls[provider] ?? "").trim();
+    if (!apiKey && provider !== "custom") {
+      setSettingsOpen(true);
+      return;
+    }
+    if (provider === "custom" && !baseUrl) {
+      setSettingsOpen(true);
+      return;
+    }
+    setClarifying(true);
+    setError("");
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          idea,
+          lang,
+          provider,
+          apiKey,
+          model,
+          mode: "clarify",
+          baseUrl: provider === "custom" ? baseUrl : undefined,
+        }),
+      });
+      const j = (await res.json().catch(() => null)) as {
+        questions?: string[];
+        error?: string;
+      } | null;
+      if (!res.ok || !j) {
+        setError(j?.error ?? `Gagal memuat pertanyaan (HTTP ${res.status}).`);
+        return;
+      }
+      setQuestions(j.questions ?? []);
+      setAnswers(new Array(j.questions?.length ?? 0).fill(""));
+    } catch {
+      setError("Gagal memuat pertanyaan (jaringan).");
+    } finally {
+      setClarifying(false);
+    }
+  };
+
+  const setAnswerAt = (index: number, value: string) => {
+    setAnswers((prev) => {
+      const next = [...prev];
+      next[index] = value.slice(0, 2000);
+      return next;
+    });
+  };
 
   const run = async (mode: GenerateMode) => {
     if (mode === "create" && idea.trim().length < MIN_IDEA_LENGTH) {
@@ -126,6 +185,15 @@ export default function Studio() {
           model,
           mode,
           baseUrl: provider === "custom" ? baseUrl : undefined,
+          answers:
+            mode === "create"
+              ? questions
+                  .map((question, index) => ({
+                    question,
+                    answer: answers[index] ?? "",
+                  }))
+                  .filter((a) => a.answer.trim())
+              : undefined,
           currentPrd: mode === "refine" ? prev : undefined,
           refineInstruction: mode === "refine" ? refineInput : undefined,
         }),
@@ -186,6 +254,10 @@ export default function Studio() {
         setCurrentHistoryId(hid);
       } else {
         setHistory(updateHistory(prevHistoryId, { title, content: acc }));
+      }
+      if (mode === "create") {
+        setQuestions([]);
+        setAnswers([]);
       }
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") {
@@ -296,6 +368,8 @@ export default function Studio() {
     setCurrentHistoryId(item.id);
     setError("");
     setEditing(false);
+    setQuestions([]);
+    setAnswers([]);
   };
 
   return (
@@ -319,6 +393,11 @@ export default function Studio() {
           busy={streaming}
           onGenerate={() => run("create")}
           onStop={stop}
+          questions={questions}
+          answers={answers}
+          clarifying={clarifying}
+          onClarify={clarify}
+          onAnswerChange={setAnswerAt}
         />
         <PrdResult
           prd={prd}

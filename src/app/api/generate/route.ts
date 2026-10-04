@@ -1,5 +1,6 @@
 import { readJsonBody, sanitizeError } from "@/lib/http";
 import {
+  buildClarifySystemPrompt,
   buildCreateUserMessage,
   buildRefineUserMessage,
   buildSystemPrompt,
@@ -11,11 +12,18 @@ import {
   MAX_REFINE_LENGTH,
   MIN_IDEA_LENGTH,
   MIN_REFINE_LENGTH,
+  parseClarifyQuestions,
   STREAM_ERROR_MARKER,
+  type ClarifyAnswer,
   type GenerateMode,
 } from "@/lib/prompts";
 import { getModel, isProviderId, isValidBaseUrl } from "@/lib/providers";
-import { createTextStreamResponse, streamText, toTextStream } from "ai";
+import {
+  createTextStreamResponse,
+  generateText,
+  streamText,
+  toTextStream,
+} from "ai";
 
 export async function POST(req: Request) {
   const parsed = await readJsonBody(req);
@@ -34,6 +42,7 @@ export async function POST(req: Request) {
         currentPrd?: unknown;
         refineInstruction?: unknown;
         baseUrl?: unknown;
+        answers?: unknown;
       }
     | null;
 
@@ -41,7 +50,12 @@ export async function POST(req: Request) {
     return Response.json({ error: "Body kosong." }, { status: 400 });
   }
 
-  const mode: GenerateMode = body.mode === "refine" ? "refine" : "create";
+  const mode: GenerateMode =
+    body.mode === "refine"
+      ? "refine"
+      : body.mode === "clarify"
+        ? "clarify"
+        : "create";
   const lang = isPrdLanguage(body.lang) ? body.lang : "id";
   const templateId = isTemplateId(body.template)
     ? body.template
@@ -88,8 +102,9 @@ export async function POST(req: Request) {
       ? body.refineInstruction.trim()
       : "";
   const currentPrd = typeof body.currentPrd === "string" ? body.currentPrd : "";
+  let answers: ClarifyAnswer[] = [];
 
-  if (mode === "create") {
+  if (mode === "create" || mode === "clarify") {
     if (idea.length < MIN_IDEA_LENGTH) {
       return Response.json(
         { error: `Ide minimal ${MIN_IDEA_LENGTH} karakter.` },
@@ -102,7 +117,28 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-  } else {
+  }
+  if (mode === "create") {
+    const validAnswers: ClarifyAnswer[] = [];
+    if (Array.isArray(body.answers)) {
+      for (const item of body.answers.slice(0, 10)) {
+        if (
+          item &&
+          typeof item === "object" &&
+          typeof (item as ClarifyAnswer).question === "string" &&
+          typeof (item as ClarifyAnswer).answer === "string" &&
+          (item as ClarifyAnswer).answer.trim()
+        ) {
+          validAnswers.push({
+            question: (item as ClarifyAnswer).question.slice(0, 300),
+            answer: (item as ClarifyAnswer).answer.trim().slice(0, 2000),
+          });
+        }
+      }
+    }
+    answers = validAnswers;
+  }
+  if (mode === "refine") {
     if (refineInstruction.length < MIN_REFINE_LENGTH) {
       return Response.json(
         { error: `Instruksi refine minimal ${MIN_REFINE_LENGTH} karakter.` },
@@ -124,11 +160,30 @@ export async function POST(req: Request) {
   }
 
   const languageModel = getModel(provider, apiKey, model, baseUrl);
+
+  if (mode === "clarify") {
+    try {
+      const { text } = await generateText({
+        model: languageModel,
+        system: buildClarifySystemPrompt(lang),
+        prompt: buildCreateUserMessage(idea),
+        maxOutputTokens: 400,
+        abortSignal: req.signal,
+      });
+      return Response.json({ questions: parseClarifyQuestions(text) });
+    } catch (err) {
+      return Response.json(
+        { error: sanitizeError(err, apiKey) },
+        { status: 502 },
+      );
+    }
+  }
+
   const system = buildSystemPrompt(lang, templateId, mode);
   const userMessage =
     mode === "refine"
       ? buildRefineUserMessage(currentPrd, refineInstruction)
-      : buildCreateUserMessage(idea);
+      : buildCreateUserMessage(idea, answers);
 
   let streamError = "";
   const result = streamText({

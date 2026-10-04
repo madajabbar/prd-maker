@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   TEMPLATES,
+  buildClarifySystemPrompt,
   buildCreateUserMessage,
   buildRefineUserMessage,
   buildSystemPrompt,
@@ -9,6 +10,7 @@ import {
   MAX_TITLE_LENGTH,
   MIN_IDEA_LENGTH,
   MIN_REFINE_LENGTH,
+  parseClarifyQuestions,
   STREAM_ERROR_MARKER,
 } from "../src/lib/prompts.ts";
 import { PROVIDERS, DEFAULT_PROVIDER, isValidBaseUrl } from "../src/lib/providers.ts";
@@ -48,6 +50,26 @@ assert.ok(
   "mode refine tidak mengubah system prompt",
 );
 assert.ok(buildCreateUserMessage("ide").includes("<idea>"));
+// Jawaban clarify masuk konteks generate
+const withAnswers = buildCreateUserMessage("ide", [
+  { question: "Siapa target?", answer: "UMKM" },
+]);
+assert.ok(withAnswers.includes("<qa>") && withAnswers.includes("A: UMKM"));
+assert.ok(!buildCreateUserMessage("ide", []).includes("<qa>"));
+
+// Clarify: format prompt ketat + parser Q-lines
+const clarifySys = buildClarifySystemPrompt("id");
+assert.ok(clarifySys.includes('Q: ') && clarifySys.includes("3-5"));
+assert.deepEqual(parseClarifyQuestions("Q: Siapa target?\nQ: Budget?\nprose lain\nQ: Timeline?"), [
+  "Siapa target?",
+  "Budget?",
+  "Timeline?",
+]);
+assert.deepEqual(parseClarifyQuestions("no questions here"), []);
+assert.equal(parseClarifyQuestions("Q: a\nQ: b\nQ: c\nQ: d\nQ: e\nQ: f\nQ: g\nQ: h\nQ: i").length, 8);
+
+// System prompt menyuruh wireframe HTML self-contained
+assert.ok(buildSystemPrompt("id", "saas").includes("wireframe"));
 const refineMsg = buildRefineUserMessage("# Lama", "tambah fitur X");
 assert.ok(refineMsg.includes("<current_prd>") && refineMsg.includes("<instruction>"));
 

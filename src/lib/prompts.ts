@@ -1,5 +1,5 @@
 export type PrdLanguage = "id" | "en";
-export type GenerateMode = "create" | "refine";
+export type GenerateMode = "create" | "refine" | "clarify";
 
 export const MIN_IDEA_LENGTH = 10;
 export const MAX_IDEA_LENGTH = 4000;
@@ -9,6 +9,11 @@ export const MAX_CURRENT_PRD_LENGTH = 512_000;
 export const MAX_TITLE_LENGTH = 300;
 
 export const STREAM_ERROR_MARKER = "\n\n---\n> ⚠️ Error: ";
+
+export interface ClarifyAnswer {
+  question: string;
+  answer: string;
+}
 
 export interface PrdTemplate {
   id: string;
@@ -129,7 +134,7 @@ Performance, security, privacy, accessibility (WCAG), SEO, reliability — with 
 Entities with fields and relationships (markdown table or mermaid erDiagram), plus a REST endpoint table (method, path, description, auth).
 
 ## 11. Design System & UI
-Design direction (mood, references), color palette with hex values, typography scale, spacing scale; then descriptive wireframes for EVERY key screen (describe layout top-to-bottom in words, per screen); finish with a UI component inventory.
+Design direction (mood, references), color palette with hex values, typography scale, spacing scale; then descriptive wireframes for EVERY key screen (describe layout top-to-bottom in words, per screen); for the 2-4 MOST important screens, also include a visual mockup as a fenced code block with the info string "wireframe" containing self-contained HTML (see wireframe rules); finish with a UI component inventory.
 
 ## 12. Tech Stack Recommendation
 Frontend, backend, database, infrastructure, third-party services — each with a one-line rationale.
@@ -168,6 +173,7 @@ export function buildSystemPrompt(
 - Output ONLY the Markdown document. No conversational intro/outro, no wrapping code fence.
 - Start with "# <Product Name>" plus a one-line tagline, then the 16 numbered "## N. ..." sections in the exact order below. Never skip or reorder sections.
 - Use Markdown tables for metrics, competitors, requirements, endpoints, data model, and risks.
+- WIREFRAME RULES: a wireframe mockup is a fenced code block whose info string is exactly "wireframe" and whose content is a single self-contained HTML snippet representing ONE screen: plain HTML elements with INLINE STYLES only (grayscale boxes, borders, padding, flex/grid via style attribute), realistic labels and placeholder text, roughly 600-900 chars. NO <script>, NO external assets, NO Tailwind classes, NO <html>/<head>/<body> wrapper — just the fragment (e.g. a single <div style="...">). Include 2-4 such wireframe blocks for the most important screens inside section 11, each preceded by the screen name in bold.
 - Be specific and concrete: real numbers, named examples, testable acceptance criteria. When the idea lacks detail, invent reasonable decisions instead of leaving placeholders.`,
     SECTIONS,
     `PRODUCT TYPE: ${template.label}. ${template.emphasis}`,
@@ -175,8 +181,39 @@ export function buildSystemPrompt(
   ].join("\n\n");
 }
 
-export function buildCreateUserMessage(idea: string): string {
-  return `Product idea:\n\n<idea>\n${idea}\n</idea>`;
+export function buildCreateUserMessage(
+  idea: string,
+  answers?: ClarifyAnswer[],
+): string {
+  const qa =
+    answers && answers.length > 0
+      ? `\n\nClarifying Q&A (user's answers, treat as authoritative):\n<qa>\n${answers
+          .map((a) => `Q: ${a.question}\nA: ${a.answer}`)
+          .join("\n")}\n</qa>`
+      : "";
+  return `Product idea:\n\n<idea>\n${idea}\n</idea>${qa}`;
+}
+
+export function buildClarifySystemPrompt(language: PrdLanguage): string {
+  const langLine =
+    language === "id"
+      ? "Write the questions in Bahasa Indonesia."
+      : "Write the questions in English.";
+  return [
+    `You are a senior product manager preparing to write a PRD. Your job right now: ask the 3-5 MOST decision-critical clarifying questions about the product idea — the answers must materially change scope, features, or priorities. Skip questions you can reasonably decide yourself.`,
+    `OUTPUT FORMAT (strict): each question on its own line, prefixed exactly with "Q: ", maximum 15 words per question, no numbering, no explanations, no markdown, no opening or closing prose. Output nothing else.`,
+    langLine,
+  ].join("\n\n");
+}
+
+export function parseClarifyQuestions(text: string): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("Q:"))
+    .map((line) => line.slice(2).trim())
+    .filter(Boolean)
+    .slice(0, 8);
 }
 
 export function buildRefineUserMessage(
