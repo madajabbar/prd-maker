@@ -14,7 +14,7 @@ import {
   STREAM_ERROR_MARKER,
   type GenerateMode,
 } from "@/lib/prompts";
-import { getModel, isProviderId } from "@/lib/providers";
+import { getModel, isProviderId, isValidBaseUrl } from "@/lib/providers";
 import { createTextStreamResponse, streamText, toTextStream } from "ai";
 
 export async function POST(req: Request) {
@@ -33,6 +33,7 @@ export async function POST(req: Request) {
         mode?: unknown;
         currentPrd?: unknown;
         refineInstruction?: unknown;
+        baseUrl?: unknown;
       }
     | null;
 
@@ -49,11 +50,15 @@ export async function POST(req: Request) {
   const apiKey = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
   const model =
     typeof body.model === "string" ? body.model.trim().slice(0, 200) : "";
+  const baseUrl =
+    typeof body.baseUrl === "string"
+      ? body.baseUrl.trim().slice(0, 500)
+      : "";
 
   if (!provider) {
     return Response.json({ error: "Provider tidak dikenal." }, { status: 400 });
   }
-  if (!apiKey) {
+  if (!apiKey && provider !== "custom") {
     return Response.json(
       { error: "API key belum diisi. Buka Pengaturan untuk menambahkan key." },
       { status: 400 },
@@ -61,6 +66,20 @@ export async function POST(req: Request) {
   }
   if (!model) {
     return Response.json({ error: "Model belum dipilih." }, { status: 400 });
+  }
+  if (provider === "custom") {
+    if (!baseUrl) {
+      return Response.json(
+        { error: "Base URL wajib diisi untuk provider custom." },
+        { status: 400 },
+      );
+    }
+    if (!isValidBaseUrl(baseUrl)) {
+      return Response.json(
+        { error: "Base URL tidak valid (harus http/https)." },
+        { status: 400 },
+      );
+    }
   }
 
   const idea = typeof body.idea === "string" ? body.idea.trim() : "";
@@ -104,7 +123,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const languageModel = getModel(provider, apiKey, model);
+  const languageModel = getModel(provider, apiKey, model, baseUrl);
   const system = buildSystemPrompt(lang, templateId, mode);
   const userMessage =
     mode === "refine"

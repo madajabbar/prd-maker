@@ -15,6 +15,7 @@ export const HISTORY_CAP = 25;
 const KEYS_KEY = "prdmaker:keys";
 const MODEL_KEY = "prdmaker:model";
 const HISTORY_KEY = "prdmaker:history";
+const BASE_URLS_KEY = "prdmaker:baseurls";
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -43,6 +44,16 @@ export function saveKey(provider: ProviderId, apiKey: string) {
   const keys = loadKeys();
   keys[provider] = apiKey;
   writeJson(KEYS_KEY, keys);
+}
+
+export function loadBaseUrls(): Partial<Record<ProviderId, string>> {
+  return readJson<Partial<Record<ProviderId, string>>>(BASE_URLS_KEY, {});
+}
+
+export function saveBaseUrl(provider: ProviderId, baseUrl: string) {
+  const urls = loadBaseUrls();
+  urls[provider] = baseUrl;
+  writeJson(BASE_URLS_KEY, urls);
 }
 
 export function loadModel(): { provider: ProviderId; model: string } {

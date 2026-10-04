@@ -5,7 +5,13 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
 
-export type ProviderId = "openrouter" | "openai" | "anthropic" | "google" | "groq";
+export type ProviderId =
+  | "openrouter"
+  | "openai"
+  | "anthropic"
+  | "google"
+  | "groq"
+  | "custom";
 
 export interface ProviderInfo {
   id: ProviderId;
@@ -62,6 +68,13 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     ],
     defaultModel: "llama-3.3-70b-versatile",
   },
+  custom: {
+    id: "custom",
+    label: "Custom (OpenAI-compatible)",
+    keyUrl: "",
+    models: [],
+    defaultModel: "",
+  },
 };
 
 export const DEFAULT_PROVIDER: ProviderId = "openrouter";
@@ -74,6 +87,7 @@ export function getModel(
   provider: ProviderId,
   apiKey: string,
   modelId: string,
+  baseUrl = "",
 ): LanguageModel {
   switch (provider) {
     case "openrouter":
@@ -81,6 +95,12 @@ export function getModel(
         name: "openrouter",
         baseURL: "https://openrouter.ai/api/v1",
         apiKey,
+      })(modelId);
+    case "custom":
+      return createOpenAICompatible({
+        name: "custom",
+        baseURL: baseUrl,
+        apiKey: apiKey || undefined,
       })(modelId);
     case "openai":
       return createOpenAI({ apiKey })(modelId);
@@ -90,5 +110,14 @@ export function getModel(
       return createGoogleGenerativeAI({ apiKey })(modelId);
     case "groq":
       return createGroq({ apiKey })(modelId);
+  }
+}
+
+export function isValidBaseUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
   }
 }

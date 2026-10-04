@@ -13,10 +13,12 @@ import {
 import type { ProviderId } from "@/lib/providers";
 import {
   addToHistory,
+  loadBaseUrls,
   loadHistory,
   loadKeys,
   loadModel,
   removeFromHistory,
+  saveBaseUrl,
   saveKey,
   saveModel,
   updateHistory,
@@ -46,6 +48,9 @@ function slugify(title: string): string {
 
 export default function Studio() {
   const [keys, setKeys] = useState<Partial<Record<ProviderId, string>>>({});
+  const [baseUrls, setBaseUrls] = useState<Partial<Record<ProviderId, string>>>(
+    {},
+  );
   const [provider, setProvider] = useState<ProviderId>("openrouter");
   const [model, setModel] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -69,6 +74,7 @@ export default function Studio() {
 
   useEffect(() => {
     setKeys(loadKeys());
+    setBaseUrls(loadBaseUrls());
     const m = loadModel();
     setProvider(m.provider);
     setModel(m.model);
@@ -85,7 +91,12 @@ export default function Studio() {
       return;
     }
     const apiKey = keys[provider]?.trim();
-    if (!apiKey) {
+    const baseUrl = (baseUrls[provider] ?? "").trim();
+    if (!apiKey && provider !== "custom") {
+      setSettingsOpen(true);
+      return;
+    }
+    if (provider === "custom" && !baseUrl) {
       setSettingsOpen(true);
       return;
     }
@@ -114,6 +125,7 @@ export default function Studio() {
           apiKey,
           model,
           mode,
+          baseUrl: provider === "custom" ? baseUrl : undefined,
           currentPrd: mode === "refine" ? prev : undefined,
           refineInstruction: mode === "refine" ? refineInput : undefined,
         }),
@@ -194,9 +206,12 @@ export default function Studio() {
     p: ProviderId,
     m: string,
     apiKeyForProvider: string,
+    baseUrl: string,
   ) => {
     saveKey(p, apiKeyForProvider);
     setKeys((prev) => ({ ...prev, [p]: apiKeyForProvider }));
+    saveBaseUrl(p, baseUrl.trim());
+    setBaseUrls((prev) => ({ ...prev, [p]: baseUrl.trim() }));
     saveModel(p, m);
     setProvider(p);
     setModel(m);
@@ -295,7 +310,11 @@ export default function Studio() {
           onLangChange={setLang}
           provider={provider}
           model={model}
-          hasKey={Boolean(keys[provider])}
+          hasKey={
+            provider === "custom"
+              ? Boolean(baseUrls.custom?.trim())
+              : Boolean(keys[provider])
+          }
           onOpenSettings={() => setSettingsOpen(true)}
           busy={streaming}
           onGenerate={() => run("create")}
@@ -333,6 +352,7 @@ export default function Studio() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         keys={keys}
+        baseUrls={baseUrls}
         provider={provider}
         model={model}
         onSave={saveSettings}

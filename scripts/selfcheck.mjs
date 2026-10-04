@@ -11,7 +11,12 @@ import {
   MIN_REFINE_LENGTH,
   STREAM_ERROR_MARKER,
 } from "../src/lib/prompts.ts";
-import { PROVIDERS, DEFAULT_PROVIDER } from "../src/lib/providers.ts";
+import { PROVIDERS, DEFAULT_PROVIDER, isValidBaseUrl } from "../src/lib/providers.ts";
+import { sanitizeError } from "../src/lib/http.ts";
+
+// sanitizeError: key kosong tak boleh merusak pesan; key terisi wajib ter-redact
+assert.ok(!sanitizeError(new Error("boom"), "").includes("•"));
+assert.equal(sanitizeError(new Error("sk-secret boom"), "sk-secret"), "•••• boom");
 
 // Konstanta batasan: min < max, marker aman
 assert.ok(MIN_IDEA_LENGTH >= 1 && MAX_IDEA_LENGTH > MIN_IDEA_LENGTH);
@@ -46,11 +51,20 @@ assert.ok(buildCreateUserMessage("ide").includes("<idea>"));
 const refineMsg = buildRefineUserMessage("# Lama", "tambah fitur X");
 assert.ok(refineMsg.includes("<current_prd>") && refineMsg.includes("<instruction>"));
 
-// Provider registry: 5 provider BYOK + default valid
-assert.equal(Object.keys(PROVIDERS).length, 5);
+// Provider registry: 6 provider BYOK + default valid + custom OpenAI-compatible
+assert.equal(Object.keys(PROVIDERS).length, 6);
 assert.ok(PROVIDERS[DEFAULT_PROVIDER].defaultModel);
+assert.ok("custom" in PROVIDERS);
 for (const p of Object.values(PROVIDERS)) {
-  assert.ok(p.models.includes(p.defaultModel), `default ${p.id} tidak ada di list`);
+  assert.ok(
+    p.defaultModel === "" ? p.models.length === 0 : p.models.includes(p.defaultModel),
+    `default ${p.id} tidak konsisten dengan list`,
+  );
 }
+assert.ok(isValidBaseUrl("https://api.example.com/v1"));
+assert.ok(isValidBaseUrl("http://localhost:11434/v1"));
+assert.ok(!isValidBaseUrl("ftp://api.example.com"));
+assert.ok(!isValidBaseUrl("bukan url"));
+assert.ok(!isValidBaseUrl(""));
 
 console.log("selfcheck OK");

@@ -17,6 +17,8 @@ export async function readJsonBody(
 export function sanitizeError(err: unknown, apiKey: string): string {
   let msg =
     err instanceof Error ? err.message : typeof err === "string" ? err : "";
-  msg = String(msg).replaceAll(apiKey, "••••");
+  if (apiKey) {
+    msg = msg.replaceAll(apiKey, "••••");
+  }
   return msg.slice(0, 300);
 }

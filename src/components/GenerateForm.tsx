@@ -110,7 +110,9 @@ export default function GenerateForm({
           </button>
           {!hasKey && (
             <span className="text-xs text-amber-600 dark:text-amber-400">
-              API key belum diatur
+              {provider === "custom"
+                ? "Base URL belum diatur"
+                : "API key belum diatur"}
             </span>
           )}
         </div>
