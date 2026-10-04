@@ -36,3 +36,4 @@ npm run dev
 2. Set env var `POSTGRES_URL` (connection string Neon/Vercel Postgres).
 3. Jalankan `sql/0001_init.sql` di database.
 
+
