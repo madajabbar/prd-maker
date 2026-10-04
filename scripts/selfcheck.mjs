@@ -14,6 +14,44 @@ import {
   STREAM_ERROR_MARKER,
 } from "../src/lib/prompts.ts";
 import { PROVIDERS, DEFAULT_PROVIDER, isValidBaseUrl } from "../src/lib/providers.ts";
+import { parseFeatureMap } from "../src/lib/featuremap.ts";
+
+// Feature map: parse FR dari bab 8 (format list + tabel), grouping modul
+const fmSample = `# Judul
+
+## 8. Functional Requirements
+
+### Modul Autentikasi
+
+- FR-01: Login email + password (P0)
+- **FR-02:** SSO Google Workspace (P1)
+
+**Modul Laporan**
+
+| Kode | Deskripsi | Prioritas |
+|---|---|---|
+| FR-03 | Ekspor laporan PDF | P0 |
+| FR-04 | Filter rentang tanggal | P2 |
+
+## 9. Non-Functional Requirements
+
+- FR-99: tidak boleh ikut
+`;
+const fm = parseFeatureMap(fmSample);
+const auth = fm.find((m) => m.module === "Modul Autentikasi");
+assert.ok(auth && auth.items.length === 2, "modul auth 2 item");
+assert.equal(auth.items[0].code, "FR-01");
+assert.equal(auth.items[0].priority, "P0");
+assert.ok(auth.items[0].description.includes("Login email"));
+assert.equal(auth.items[1].priority, "P1");
+const rep = fm.find((m) => /Laporan/.test(m.module));
+assert.ok(rep && rep.items.length === 2, "modul laporan 2 item (tabel)");
+assert.equal(rep.items[0].code, "FR-03");
+assert.equal(rep.items[0].priority, "P0");
+assert.ok(rep.items[0].description.includes("Ekspor laporan PDF"));
+assert.equal(rep.items[1].priority, "P2");
+assert.ok(!fm.some((m) => m.items.some((i) => i.code === "FR-99")), "FR di luar bab 8 diabaikan");
+assert.equal(parseFeatureMap("# tanpa bab 8").length, 0);
 import { sanitizeError } from "../src/lib/http.ts";
 
 // sanitizeError: key kosong tak boleh merusak pesan; key terisi wajib ter-redact

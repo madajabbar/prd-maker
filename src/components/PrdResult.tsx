@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { MIN_REFINE_LENGTH } from "@/lib/prompts";
+import { parseFeatureMap } from "@/lib/featuremap";
+import FeatureMap from "./FeatureMap";
 import MarkdownView from "./MarkdownView";
 
 interface Props {
@@ -38,6 +41,14 @@ export default function PrdResult({
   shareId,
   toast,
 }: Props) {
+  const [tab, setTab] = useState<"doc" | "map">("doc");
+  const featureMap = useMemo(() => parseFeatureMap(prd), [prd]);
+  const featureCount = featureMap.reduce((n, m) => n + m.items.length, 0);
+
+  useEffect(() => {
+    if (streaming) setTab("doc");
+  }, [streaming]);
+
   if (!prd && !streaming && !error) {
     return (
       <section className="rounded-2xl border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-700">
@@ -55,12 +66,37 @@ export default function PrdResult({
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 px-5 py-3 dark:border-zinc-800">
-        <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-          {streaming ? "Sedang menulis…" : "PRD"}
-          {streaming && (
-            <span className="ml-2 inline-block h-2 w-2 animate-pulse rounded-full bg-green-500 align-middle" />
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            {streaming ? "Sedang menulis…" : "PRD"}
+            {streaming && (
+              <span className="ml-2 inline-block h-2 w-2 animate-pulse rounded-full bg-green-500 align-middle" />
+            )}
+          </span>
+          {prd && !streaming && featureCount > 0 && (
+            <div className="inline-flex rounded-lg border border-zinc-300 p-0.5 text-xs font-medium dark:border-zinc-700">
+              {(
+                [
+                  ["doc", "Dokumen"],
+                  ["map", `Feature Map (${featureCount})`],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setTab(key)}
+                  className={`rounded-md px-3 py-1 ${
+                    tab === key
+                      ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                      : "text-zinc-600 dark:text-zinc-300"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           )}
-        </span>
+        </div>
         {prd && !streaming && (
           <div className="flex flex-wrap gap-2">
             <button
@@ -104,6 +140,8 @@ export default function PrdResult({
             rows={24}
             className="w-full resize-y rounded-xl border border-zinc-300 bg-zinc-50 p-3 font-mono text-xs leading-relaxed text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
           />
+        ) : tab === "map" && featureCount > 0 ? (
+          <FeatureMap modules={featureMap} />
         ) : (
           <MarkdownView content={prd} />
         )}
